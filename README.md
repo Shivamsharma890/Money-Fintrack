@@ -19,7 +19,7 @@ Money Fintrack is a full-stack web application that helps users manage their acc
 - **Frontend:** React.js, Vite, Tailwind CSS
 - **Backend:** Python, Flask, REST APIs
 - **Database:** MongoDB
-- **Caching:** Redis
+- **Caching:** Redis (uses in User Login and Payment Caching for Rate Limiting)
 - **Payment Gateway:** Rozarpay (Tested and Real Money Payment)
 - **Tools:** Git, GitHub
 
