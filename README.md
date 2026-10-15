@@ -20,6 +20,7 @@ Money Fintrack is a full-stack web application that helps users manage their acc
 - **Backend:** Python, Flask, REST APIs
 - **Database:** MongoDB
 - **Caching:** Redis
+- **Payment Gateway:** Rozarpay (Tested and Real Money Payment)
 - **Tools:** Git, GitHub
 
 ## 🏗️ Architecture
@@ -38,8 +39,6 @@ Money-Fintrack/
 │
 └── README.md
 ```
-
-*Note: The architecture is simplified. Folder names should match your actual project structure.*
 
 ## 🚀 Getting Started
 
@@ -67,21 +66,6 @@ Ensure MongoDB and Redis are configured and running as required by your applicat
 ## 🔒 Environment Variables
 
 Configure your required database URLs, secret keys, and other credentials in local `.env` files. **Never upload secrets or credentials to GitHub.**
-
-## 🔮 Future Enhancements
-
-- Financial analytics and visual reports
-- Downloadable transaction statements
-- Improved security and transaction monitoring
-- Cloud deployment
-
-## 👨‍💻 Developer
-
-**Shivam Sharma**  
-B.Tech CSE | Full-Stack Development Enthusiast
-
-- GitHub: [Your GitHub Profile](https://github.com/YOUR_USERNAME)
-- LinkedIn: [Your LinkedIn Profile](https://www.linkedin.com/)
 
 ---
 
