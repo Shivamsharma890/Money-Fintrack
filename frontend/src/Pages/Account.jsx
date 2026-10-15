@@ -1,287 +1,415 @@
-import React, { useState } from 'react';
-import axios from "axios";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import api, { getApiError } from "../lib/api";
+import MFLogo from "../assets/MFLogo.png";
 
-const Account = () => {
-  const [password, setPassword] = useState("");
+const initialForm = {
+  first_name: "",
+  last_name: "",
+  phone: "",
+  address: "",
+  age: "",
+  work_email: "",
+  userid: "",
+  password: "",
+};
+
+const fields = [
+  {
+    name: "first_name",
+    label: "First name",
+    placeholder: "Your first name",
+    type: "text",
+    auto: "given-name",
+  },
+  {
+    name: "last_name",
+    label: "Last name",
+    placeholder: "Your last name",
+    type: "text",
+    auto: "family-name",
+  },
+  {
+    name: "work_email",
+    label: "Email address",
+    placeholder: "you@example.com",
+    type: "email",
+    auto: "email",
+  },
+  {
+    name: "phone",
+    label: "Phone number",
+    placeholder: "10-digit mobile number",
+    type: "tel",
+    auto: "tel",
+  },
+  {
+    name: "age",
+    label: "Age",
+    placeholder: "Enter your age",
+    type: "number",
+    auto: "off",
+  },
+  {
+    name: "userid",
+    label: "Choose a user ID",
+    placeholder: "Create a unique user ID",
+    type: "text",
+    auto: "username",
+  },
+];
+
+const inputClass =
+  "w-full rounded-xl border border-slate-200 bg-[#fafbf9] px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:ring-4 focus:ring-emerald-100";
+
+export default function Account() {
+  const [form, setForm] = useState(initialForm);
   const [confirm, setConfirm] = useState("");
-  const [contact, setContact] = useState("");
-  const [message, setMessage] = useState("");
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    address: "",
-    age: "",
-    work_email: "",
-    userid: "",
-    password: "",
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const navigate = useNavigate();
+
+  const change = (event) => {
+    const { name, value } = event.target;
+
+    if (name === "phone" && !/^\d{0,10}$/.test(value)) {
+      return;
+    }
+
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+
+    setError("");
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const submit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (form.password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(form.phone)) {
+      setError("Enter a valid 10-digit phone number.");
+      return;
+    }
+
+    if (!form.age || Number(form.age) < 18 || Number(form.age) > 120) {
+      setError("Enter a valid age between 18 and 120.");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setError("Password must contain at least 8 characters.");
+      return;
+    }
+
+    setBusy(true);
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/account`,
-        form,
-        {
-          headers: { "Content-Type": "application/json" }
-        }
+      const payload = {
+        ...form,
+        age: Number(form.age),
+      };
+
+      await api.post("/account", payload);
+
+      setSuccess("Your account has been created successfully.");
+
+      window.setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 1000);
+    } catch (requestError) {
+      setError(
+        getApiError(
+          requestError,
+          "Could not create your account. Please try again.",
+        ),
       );
-      alert(res.data.message);
-
-      window.location.reload();
-    } catch (err) {
-      alert("Error saving account: " + err.message);
+    } finally {
+      setBusy(false);
     }
   };
-
-  // ----------------------Password-confirmation-logic----------------------------
-  const handleConfirmChange = (e) => {
-    const value = e.target.value;
-    setConfirm(value);
-
-    if (value === "") {
-      setMessage("");
-    } else if (value === password && value !== "") {
-      setMessage("✅ Passwords match");
-    } else if (value !== "") {
-      setMessage("❌ Passwords do not match");
-    }
-
-  };
-
-  // -------------------Contact-number-validation (only numbers)--------------------
-  const handleContactChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setContact(value);
-
-
-      setForm({ ...form, phone: value });
-    }
-  };
-
 
   return (
-    <div className='min-h-screen p-6 pb-10 md:p-8'>
+    <main className="relative min-h-[calc(100vh-65px)] overflow-hidden bg-[#f6f8f5] px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div className="pointer-events-none absolute -left-32 top-10 h-80 w-80 rounded-full bg-emerald-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-lime-100/60 blur-3xl" />
 
-      <div className='flex flex-col lg:flex-row max-w-8xl mx-auto gap-12 lg:gap-20'>
+      <div className="relative mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] border border-white bg-white shadow-[0_30px_100px_-35px_rgba(16,40,29,0.22)] lg:grid-cols-[0.78fr_1.22fr]">
+        {/* Brand panel */}
+        <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#102a21] p-10 text-white lg:flex xl:p-12">
+          <div className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full border border-emerald-200/15" />
+          <div className="pointer-events-none absolute -bottom-24 -left-20 h-80 w-80 rounded-full bg-emerald-400/10 blur-3xl" />
 
-        {/* -----------------------Theory-Container---------------------------- */}
-        <div className='lg:w-8/12 space-y-6 md:pt-16 md:p-4'>
-          <h1 className='text-3xl md:text-4xl font-extrabold leading-tight text-gray-900'>
-            💰 Ready to take control of your finances? Create your Fintrack account today.
-          </h1>
-          <h2 className='text-lg md:text-xl font-semibold text-gray-700'>
-            Join Money Fintrack and experience the smarter way to manage your money. Our AI-powered platform helps you
-            track expenses, grow savings, and make intelligent financial decisions — all from one seamless dashboard.
-          </h2>
+          <div className="relative">
+            <Link
+              to="/"
+              aria-label="Money Fintrack home"
+              className="group flex shrink-0 items-center gap-2.5"
+            >
+              <img
+                src={MFLogo}
+                alt="Money Fintrack Logo"
+                className="h-11 w-11 shrink-0 object-contain transition duration-300 group-hover:scale-105"
+              />
 
-          <div className='space-y-3 text-gray-600'>
-            <p className='text-base md:text-lg flex items-start'>
-              <span className="text-blue-500 mr-2 mt-1">&#10003;</span> Get real-time insights into your spending and saving patterns.
-            </p>
-            <p className='text-base md:text-lg flex items-start'>
-              <span className="text-blue-500 mr-2 mt-1">&#10003;</span> Unlock personalized finance goals and recommendations powered by AI.
-            </p>
-            <p className='text-base md:text-lg flex items-start'>
-              <span className="text-blue-500 mr-2 mt-1">&#10003;</span> Experience secure, fast, and user-friendly banking at your fingertips.
+              <span className="leading-tight">
+                <span className="block whitespace-nowrap text-base font-extrabold tracking-tight text-white sm:text-lg">
+                  Money <span className="text-emerald-300">Fintrack</span>
+                </span>
+
+                <span className="mt-0.5 hidden text-[10px] font-medium tracking-wide text-slate-300 sm:block">
+                  Your money, in focus
+                </span>
+              </span>
+            </Link>
+
+            <div className="mt-16 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.17em] text-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Start your journey
+            </div>
+
+            <h1 className="mt-7 text-4xl font-black leading-[1.13] tracking-tight xl:text-5xl">
+              Make room for
+              <span className="block text-emerald-300">
+                better money habits.
+              </span>
+            </h1>
+
+            <p className="mt-6 max-w-sm text-sm leading-7 text-slate-300">
+              Create your account to keep your wallet, transactions and personal
+              finance activity organized in one place.
             </p>
           </div>
 
-          <p className='text-base md:text-lg italic text-gray-600'>
-            Our promise: Creating your Fintrack account is just the beginning of your smarter money journey.
-            With every login, you’ll gain clarity, control, and confidence in your financial future.
+          <div className="relative mt-12 space-y-5 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
+            {[
+              "Your financial activity in one place",
+              "Quick access to your wallet and transactions",
+              "A dashboard designed for everyday clarity",
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-xs font-black text-emerald-300">
+                  ✓
+                </span>
+                <p className="text-sm leading-6 text-slate-200">{item}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="relative mt-8 text-xs text-slate-400">
+            Money Fintrack · Your money, in focus.
           </p>
-        </div>
-
-        {/* --------------------------Registration-Form-Section------------------------- */}
-        <form onSubmit={handleSubmit} className='lg:w-9/12 space-y-6 md:p-8'>
-
-          <div className='text-base md:text-xl w-full font-bold p-3 rounded-lg transition-colors duration-300'></div>
-
-          {/* --------------------------Name-Inputs-------------------------- */}
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
-            <div>
-              <label htmlFor="firstName" className='text-lg font-medium text-gray-700 mb-1 block'>First Name*</label>
-              <input
-                id="firstName"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='text'
-                name="first_name"
-                placeholder="First Name"
-                value={form.first_name}
-                onChange={handleChange}
-                required
-              />
+        </aside>
+        <section className="px-5 py-8 sm:px-9 sm:py-10 xl:px-12">
+          <div className="mx-auto max-w-xl">
+            <div className="mb-7 lg:hidden">
+              <Link to="/" className="inline-flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#102a21] text-lg font-black text-emerald-300">
+                  M
+                </span>
+                <span className="text-lg font-extrabold text-slate-950">
+                  Money <span className="text-emerald-700">Fintrack</span>
+                </span>
+              </Link>
             </div>
-            <div>
-              <label htmlFor="lastName" className='text-lg font-medium text-gray-700 mb-1 block'>Last Name*</label>
-              <input
-                id="lastName"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='text'
-                name="last_name"
-                placeholder="Last Name"
-                value={form.last_name}
-                onChange={handleChange}
-                required
-              />
-            </div>
+
+            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-800">
+              Create your account
+            </p>
+
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-[#13241c] sm:text-4xl">
+              Let's get you started.
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Enter your details below to set up your Money Fintrack account.
+            </p>
+
+            <form onSubmit={submit} className="mt-7 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {fields.map((field) => (
+                  <div key={field.name}>
+                    <label
+                      htmlFor={field.name}
+                      className="mb-2 block text-sm font-bold text-slate-700"
+                    >
+                      {field.label}
+                    </label>
+
+                    <input
+                      id={field.name}
+                      name={field.name}
+                      type={field.type}
+                      autoComplete={field.auto}
+                      min={field.name === "age" ? 18 : undefined}
+                      max={field.name === "age" ? 120 : undefined}
+                      maxLength={field.name === "phone" ? 10 : undefined}
+                      inputMode={field.name === "phone" ? "numeric" : undefined}
+                      required
+                      disabled={busy}
+                      value={form[field.name]}
+                      onChange={change}
+                      placeholder={field.placeholder}
+                      className={inputClass}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="address"
+                  className="mb-2 block text-sm font-bold text-slate-700"
+                >
+                  Address
+                </label>
+
+                <textarea
+                  id="address"
+                  name="address"
+                  rows={2}
+                  required
+                  disabled={busy}
+                  value={form.address}
+                  onChange={change}
+                  placeholder="Enter your current address"
+                  className={`${inputClass} resize-y`}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-sm font-bold text-slate-700"
+                  >
+                    Password
+                  </label>
+
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      minLength={8}
+                      maxLength={128}
+                      required
+                      disabled={busy}
+                      value={form.password}
+                      onChange={change}
+                      placeholder="At least 8 characters"
+                      className={`${inputClass} pr-14`}
+                    />
+
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setShowPassword((value) => !value)}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                      className="absolute inset-y-0 right-0 px-3 text-xs font-extrabold text-emerald-800"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="confirm"
+                    className="mb-2 block text-sm font-bold text-slate-700"
+                  >
+                    Confirm password
+                  </label>
+
+                  <div className="relative">
+                    <input
+                      id="confirm"
+                      type={showConfirm ? "text" : "password"}
+                      autoComplete="new-password"
+                      required
+                      disabled={busy}
+                      value={confirm}
+                      onChange={(event) => {
+                        setConfirm(event.target.value);
+                        setError("");
+                      }}
+                      placeholder="Enter it again"
+                      className={`${inputClass} pr-14`}
+                    />
+
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setShowConfirm((value) => !value)}
+                      aria-label={
+                        showConfirm ? "Hide password" : "Show password"
+                      }
+                      className="absolute inset-y-0 right-0 px-3 text-xs font-extrabold text-emerald-800"
+                    >
+                      {showConfirm ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700"
+                >
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div
+                  role="status"
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800"
+                >
+                  {success} Redirecting you to sign in...
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={busy || Boolean(success)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#153b2b] px-5 py-4 text-sm font-extrabold text-white shadow-lg shadow-emerald-950/10 transition duration-200 hover:-translate-y-0.5 hover:bg-[#20543c] focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:cursor-wait disabled:opacity-60"
+              >
+                {busy ? "Creating your account..." : "Create account"}
+                {!busy && <span aria-hidden="true">↗</span>}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-slate-600">
+              Already have an account?{" "}
+              <Link
+                to="/login"
+                className="font-extrabold text-emerald-800 transition hover:text-emerald-950"
+              >
+                Sign in
+              </Link>
+            </p>
+
+            <p className="mt-5 text-center text-xs leading-5 text-slate-400">
+              Use a strong, unique password to help protect your account.
+            </p>
           </div>
-
-          {/* --------------------Age-and-Email----------------------- */}
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
-            <div>
-              <label htmlFor="age" className='text-lg font-medium text-gray-700 mb-1 block'>Age*</label>
-              <input
-                id="age"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='number'
-                name="age"
-                value={form.age}
-                onChange={handleChange}
-                min="18"
-                max="100"
-                placeholder='Enter your age (18+)'
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className='text-lg font-medium text-gray-700 mb-1 block'>Work Email*</label>
-              <input
-                id="email"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='email'
-                name="work_email"
-                value={form.work_email}
-                onChange={handleChange}
-                placeholder='Enter your email'
-                required
-              />
-            </div>
-          </div>
-
-          {/* ---------------------------Phone-and-Address---------------------------*/}
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
-            <div>
-              <label htmlFor="contact" className='text-lg font-medium text-gray-700 mb-1 block'>Phone Number*</label>
-              <input
-                id="contact"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                value={contact}
-                onChange={handleContactChange}
-                type='text'
-                name="phone"
-                inputMode='numeric'
-                maxLength="10"
-                placeholder='Enter contact number'
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="address" className='text-lg font-medium text-gray-700 mb-1 block'>Address*</label>
-              <input
-                id="address"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='text'
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                placeholder='Enter full address'
-                required
-              />
-            </div>
-          </div>
-
-          {/* ---------------------User ID-and-Passwords----------------------- */}
-          <div className='space-y-5'>
-            <div>
-              <label htmlFor="userID" className='text-lg font-medium text-gray-700 mb-1 block'>User-ID*</label>
-              <input
-                id="userID"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='text'
-                name="userid"
-                value={form.userid}
-                onChange={handleChange}
-                placeholder='Enter user ID'
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className='text-lg font-medium text-gray-700 mb-1 block'>Password*</label>
-              <input
-                id="password"
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='password'
-                name="password"
-                value={form.password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  handleChange(e);
-                }}
-                placeholder='Enter password'
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirm" className='text-lg font-medium text-gray-700 mb-1 block'>Confirm Password*</label>
-              <input
-                id="confirm"
-                value={confirm}
-                onChange={handleConfirmChange}
-                className='bg-gray-100 p-3 h-12 w-full text-base text-gray-900 rounded-lg placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150'
-                type='password'
-                placeholder='Confirm password'
-                required
-              />
-              <p className={`mt-2 text-sm font-medium ${message.includes("✅") ? "text-green-600" : "text-red-600"}`}>{message}</p>
-            </div>
-          </div>
-
-          {/* ----------------------Checkbox-Policy------------------------- */}
-          <div className='flex items-start gap-x-3'>
-            <input
-              id="agree-updates"
-              className='mt-1.5 h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer'
-              type='checkbox'
-              required
-            />
-            <label htmlFor="agree-updates" className="text-gray-700 text-sm cursor-pointer leading-relaxed">
-              Get the latest from Money Fintrack: insights, updates, and smart financial tools to help you manage your money better.
-            </label>
-          </div>
-
-          <div className='flex items-start gap-x-3'>
-            <input
-              id="agree-policy"
-              className='mt-1.5 h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer'
-              type='checkbox'
-              required
-            />
-            <label htmlFor="agree-policy" className="text-gray-700 text-sm cursor-pointer leading-relaxed">
-              Yes, I agree to be contacted by Money Fintrack. I understand my information will be kept private and used only to provide secure and personalized banking experiences, as described in the Money Fintrack Privacy Policy.*
-            </label>
-          </div>
-
-          {/* -----------------------------Submit-Button-------------------------------- */}
-          <div>
-            <button type="submit" className='bg-blue-600 px-6 py-3 cursor-pointer rounded-lg text-white font-bold text-xl hover:bg-blue-700 shadow-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed' >Submit</button>
-          </div>
-
-        </form>
+        </section>
       </div>
-    </div>
-  )
+    </main>
+  );
 }
-
-export default Account;

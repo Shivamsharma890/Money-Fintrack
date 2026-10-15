@@ -1,202 +1,155 @@
-import React, { useState } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
+import api, { getApiError, getSavedUser } from "../lib/api";
 
-const Edit = () => {
-    const [step, setStep] = useState("auth");
-    const [userid, setUserid] = useState("");
-    const [contact, setContact] = useState("");
-    const [password, setPassword] = useState("");
+const fields = [
+  { name: "first_name", label: "First name", type: "text" },
+  { name: "last_name", label: "Last name", type: "text" },
+  { name: "phone", label: "Phone number", type: "tel" },
+  { name: "work_email", label: "Email address", type: "email" },
+  { name: "age", label: "Age", type: "number" },
+  { name: "address", label: "Address", type: "text" },
+];
 
-    const [form, setForm] = useState({
-        first_name: "",
-        last_name: "",
-        phone: "",
-        address: "",
-        age: "",
-        work_email: "",
-    });
+export default function Edit() {
+  const [form, setForm] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    address: "",
+    age: "",
+    work_email: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
 
-    // --------------------------User-Authenticate-----------------------------
-    const handleAuth = async (e) => {
-        e.preventDefault();
-
-        try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
-                userid,
-                password,
-            });
-
-            if (res.data?.user) {
-                setForm({
-                    first_name: res.data.user.first_name,
-                    last_name: res.data.user.last_name,
-                    phone: res.data.user.phone,
-                    address: res.data.user.address,
-                    age: res.data.user.age,
-                    work_email: res.data.user.work_email,
-                });
-
-                setStep("edit");
-            } else {
-                alert("❌ User not found!");
-            }
-        } catch (err) {
-            alert("❌ Authentication failed!");
-            console.log(err);
-        }
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await api.get("/me");
+        const user = response.data.user || getSavedUser() || {};
+        setForm({
+          first_name: user.first_name || "",
+          last_name: user.last_name || "",
+          phone: user.phone || "",
+          address: user.address || "",
+          age: user.age ?? "",
+          work_email: user.work_email || "",
+        });
+      } catch (error) {
+        setMessage(getApiError(error, "Could not load your personal details."));
+      }
     };
+    loadProfile();
+  }, []);
 
-    // ----------------------Save-Updated-Details------------------------------
-    const handleUpdate = async (e) => {
-        e.preventDefault();
+  const change = (event) => {
+    const { name, value } = event.target;
+    setForm((previous) => ({
+      ...previous,
+      [name]: name === "phone" ? value.replace(/\\D/g, "").slice(0, 10) : value,
+    }));
+    setSuccess(false);
+  };
 
-        try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/Editdetail`, {
-                userid,
-                password,
-                ...form,
-            });
-
-            alert(res.data.message);
-            setStep("success");
-        } catch (err) {
-            alert("❌ Update failed!");
-            console.log(err);
-        }
-    };
-
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-    };
-
-
-    const handleContactChange = (e) => {
-        const value = e.target.value;
-        if (/^\d*$/.test(value)) {
-            setContact(value);
-
-
-            setForm({ ...form, phone: value });
-        }
-    };
-
-    // -------------------------UserID-Password-Authentication------------------------------
-    if (step === "auth") {
-        return (
-            <div className="flex items-center justify-center py-10 bg-gray-50">
-                <div className="bg-blue-50 p-8 rounded-xl shadow-lg w-full max-w-4xl border border-blue-300">
-                    <h2 className="text-3xl font-bold text-blue-700 text-center mb-6">
-                        🔐 Authenticate to Edit Account
-                    </h2>
-
-                    <form onSubmit={handleAuth} className="space-y-5">
-                        <input
-                            type="text"
-                            placeholder="Enter User ID"
-                            className="p-3 w-full border rounded-md focus:ring-2 focus:ring-blue-400"
-                            value={userid}
-                            onChange={(e) => setUserid(e.target.value)}
-                            required
-                        />
-
-                        <input
-                            type="password"
-                            placeholder="Enter Password"
-                            className="p-3 w-full border rounded-md focus:ring-2 focus:ring-blue-400"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                        <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700">Authenticate</button>
-                    </form>
-                </div>
-            </div>
-        );
+  const submit = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    setSuccess(false);
+    try {
+      const response = await api.put("/profile", {
+        ...form,
+        age: Number(form.age),
+      });
+      const user = response.data.user;
+      if (user) {
+        localStorage.setItem("mf_user", JSON.stringify(user));
+        window.dispatchEvent(new Event("mf:session-updated"));
+      }
+      setSuccess(true);
+      setMessage(
+        response.data.message || "Your personal details were updated.",
+      );
+    } catch (error) {
+      setMessage(getApiError(error, "Profile update failed."));
+    } finally {
+      setBusy(false);
     }
+  };
 
-    // -------------------------Edit-Details----------------------------
-    if (step === "edit") {
-        return (
-            <div className="flex items-center justify-center py-10 bg-gray-100">
+  return (
+    <main className="min-h-[calc(100vh-72px)] bg-slate-50 px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-8">
+          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-700">
+            Account settings
+          </p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+            Personal details
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+            Keep your profile information accurate and up to date.
+          </p>
+        </div>
 
-                <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-4xl">
-                    <h2 className="text-3xl font-bold text-blue-700 text-center mb-6">✏️ Update Account Details</h2>
-                    <form
-                        onSubmit={handleUpdate}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-5"
-                    >
-                        <input
-                            name="first_name"
-                            className="p-3 border rounded-md"
-                            placeholder="First Name"
-                            value={form.first_name}
-                            onChange={handleChange}
-                        />
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+          <div className="mb-7 border-b border-slate-100 pb-5">
+            <h2 className="text-lg font-bold text-slate-900">
+              Profile information
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Update the details associated with your account.
+            </p>
+          </div>
 
-                        <input
-                            name="last_name"
-                            className="p-3 border rounded-md"
-                            placeholder="Last Name"
-                            value={form.last_name}
-                            onChange={handleChange}
-                        />
-
-                        <input
-                            name="phone"
-                            className="p-3 border rounded-md"
-                            placeholder="Phone Number"
-                            value={form.phone}
-                            onChange={handleContactChange}
-                            inputMode='numeric'
-                            maxLength="10"
-                        />
-
-                        <input
-                            name="address"
-                            className="p-3 border rounded-md"
-                            placeholder="Address"
-                            value={form.address}
-                            onChange={handleChange}
-                        />
-
-                        <input
-                            name="age"
-                            type="number"
-                            className="p-3 border rounded-md"
-                            placeholder="Age"
-                            value={form.age}
-                            onChange={handleChange}
-                        />
-
-                        <input
-                            name="work_email"
-                            type="email"
-                            className="p-3 border rounded-md"
-                            placeholder="Work Email"
-                            value={form.work_email}
-                            onChange={handleChange}
-                        />
-
-                        <button type="submit" className="col-span-1 md:col-span-2 py-3 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700">Save Changes</button>
-                    </form>
-                </div>
+          <form
+            onSubmit={submit}
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+          >
+            {fields.map((field) => (
+              <label key={field.name} className="block">
+                <span className="mb-2 block text-sm font-semibold text-slate-700">
+                  {field.label}
+                </span>
+                <input
+                  name={field.name}
+                  type={field.type}
+                  min={field.name === "age" ? 18 : undefined}
+                  max={field.name === "age" ? 120 : undefined}
+                  maxLength={field.name === "phone" ? 10 : undefined}
+                  required
+                  value={form[field.name]}
+                  onChange={change}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                />
+              </label>
+            ))}
+            <div className="sm:col-span-2">
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full rounded-xl bg-green-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {busy ? "Saving changes…" : "Save personal details"}
+              </button>
             </div>
-        );
-    }
+          </form>
 
-    // -----------------Updated-Details----------------------
-    if (step === "success") {
-        return (
-            <div className="flex items-center justify-center py-10 bg-gray-100">
-                <div className="bg-green-50 p-8 rounded-xl shadow-lg w-full max-w-3xl border border-green-300 text-center">
-                    <h1 className="text-3xl font-bold text-green-700 mb-4">✅ Account Updated Successfully</h1>
-                    <button onClick={() => setStep("auth")} className="py-3 px-6 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700">Edit Another Account</button>
-                </div>
-            </div>
-        );
-    }
-
-    return null;
-};
-
-export default Edit;
+          {message && (
+            <p
+              role="status"
+              className={`mt-5 rounded-xl p-4 text-sm ${
+                success
+                  ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border border-rose-200 bg-rose-50 text-rose-800"
+              }`}
+            >
+              {message}
+            </p>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
